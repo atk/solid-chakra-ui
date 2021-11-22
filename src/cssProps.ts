@@ -425,4 +425,4 @@ export const cssProps = [
   'y',
   'zIndex',
   'zoom'
-] as const;
+];

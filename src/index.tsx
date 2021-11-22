@@ -1,5 +1,9 @@
+import { createSignal } from 'solid-js';
 import { render } from 'solid-js/web';
 import { Box } from './Box';
 
-render(() => <Box color="red" h="100px" w="50%">Test</Box>, document.body);
+render(() => { 
+  const [h, setH] = createSignal('100px');
+  return <Box color="red" h={h()} w="50%">Test</Box>
+}, document.body);
 

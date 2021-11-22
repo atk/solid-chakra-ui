@@ -1,18 +1,24 @@
 import { Component, JSX } from 'solid-js';
-import { styled, Tagged } from 'solid-styled-components';
-import { splitStyles, ChakraCSSProps } from './props';
+import { style } from '@vanilla-extract/css';
+import { splitStyleProps } from './props';
+import { spread } from 'solid-js/web';
 
-export type BoxProps = Partial<JSX.HTMLAttributes<HTMLDivElement> & ChakraCSSProps>;
+export type BoxProps<E extends keyof JSX.IntrinsicElements = 'div'> =
+  { as?: E } &
+  Partial<JSX.IntrinsicElements[E]> &
+  Record<string & keyof CSSStyleDeclaration, string>;
 
-// cache styled components
-const tags: Record<string, Tagged<any>> = {};
 
 export const Box: Component<BoxProps> = (props) => {
-  const [styleProps, boxProps] = splitStyles(props);
+  const splittedProps = splitStyleProps(props);
+
+  const staticStylesClassName = style(splittedProps.staticStyles);
+  const dynamicStylesClassName = style(splittedProps.dynamicStyles);
 
   const tagName = props.as ?? 'div';
-  const tag =
-    (!('ref' in props) && tags[tagName]) || (tags[tagName] = styled(tagName));
-  const Tag = tag(() => styleProps);
-  return <Tag {...boxProps} />;
+  const tag = document.createElement(tagName);
+  tag.classList.add(staticStylesClassName);
+  tag.classList.add(dynamicStylesClassName);
+  spread(tag, () => splittedProps.componentProps);
+  return tag;
 };

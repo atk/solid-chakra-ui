@@ -1,29 +1,19 @@
-import { createSignal, JSX, splitProps } from 'solid-js';
+import { createEffect, JSX, Show } from 'solid-js';
+import { createStore, Store } from 'solid-js/store';
 import { isServer } from 'solid-js/web';
 import { cssProps } from './cssProps';
 
-export type ChakraSize = `${3 | 4 | 5 | 6}xl` | 'xxl' | 'xl' | 'l' | 'm' | 's';
-
-type CSSProps = JSX.CSSProperties;
-
 const toCamelCase = (attr: string) => attr.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
 
-const toKebapCase = (attr: string) => attr.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
+/* const toKebapCase = (attr: string) => attr.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`); */
 
-const addKebapCase = (props: readonly string[] | string[]): string[] => [
-  ...props,
-  ...(props as string[]).reduce<string[]>((cc, name) => {
-    /[A-Z]/.test(name) && cc.push(toKebapCase(name));
-    return cc;
-  }, [])];
-
-const CSSProperties = isServer
-  ? addKebapCase(cssProps)
-  : addKebapCase(Object.getOwnPropertyNames(getComputedStyle(document.body)).filter((name) =>
+const cssProperties = isServer
+  ? cssProps
+  : Object.getOwnPropertyNames(getComputedStyle(document.body)).filter((name) =>
       /\D+/.test(name)
-    ));
+    );
 
-const chakraCSSProps = {
+const shorthandProps = {
   m: 'margin',
   mb: 'marginBottom',
   ml: 'marginLeft',
@@ -33,78 +23,65 @@ const chakraCSSProps = {
   pb: 'paddingBottom',
   pl: 'paddingLeft',
   pr: 'paddingRight',
-  pt: 'padding-top',
+  pt: 'paddingTop',
   w: 'width',
   h: 'height',
   size: 'size',
-  boxSize: 'boxSize',
-} as const;
-
-export type ChakraCSSShorthandProps = {
-  m: CSSProps['margin'];
-  mb: CSSProps['margin-bottom'];
-  ml: CSSProps['margin-left'];
-  mr: CSSProps['margin-right'];
-  mt: CSSProps['margin-top'];
-  p: CSSProps['padding'];
-  pb: CSSProps['padding-bottom'];
-  pl: CSSProps['padding-left'];
-  pr: CSSProps['padding-right'];
-  pt: CSSProps['padding-top'];
-  w: CSSProps['width'];
-  h: CSSProps['height'];
-  size: ChakraSize;
-  boxSize: CSSProps['width'];
-  as: keyof JSX.IntrinsicElements
+  boxSize: ['height', 'width'],
 };
 
-export type ChakraCSSProps = CSSProps & ChakraCSSShorthandProps;
+export type CSSProp = keyof CSSStyleDeclaration
 
-export type RawProps = Record<string, any> & Partial<ChakraCSSProps>;
+export type SplittedProps = {
+  staticStyles: Record<string, string>,
+  dynamicStyles: Record<string, string>,
+  componentProps: Record<string, string>
+};
 
-export const stylePropKeys = [...CSSProperties, ...Object.keys(chakraCSSProps)]
-
-export type FilteredProps<P extends RawProps> = {
-  [key in keyof P as 
-    key extends keyof typeof chakraCSSProps
-      ? (typeof chakraCSSProps)[key]
-      : key
-  ]: P[key]
-}
-
-export type AugmentedProps<P, F = FilteredProps<P>> = [
-  Omit<F, keyof ChakraCSSProps>,
-  Pick<F, keyof F & keyof ChakraCSSProps>
-];
-
-export const filterShortHands = <P extends RawProps>(props: P): FilteredProps<P> =>
-  Object.keys(props).reduce((filteredProps, key) => {
-    if (key in chakraCSSProps) {
-      if (key.toLowerCase() === 'boxsize') {
-        Object.assign(filteredProps, { width: props[key], height: props[key] });
-      } else {
-        filteredProps[
-          chakraCSSProps[key as keyof typeof chakraCSSProps] as keyof FilteredProps<P>
-        ] = props[key];
-      }
-    } else {
-      filteredProps[key as keyof FilteredProps<P>] = props[key];
+/**
+ * Reactively split props into static styles, dynamic styles and component props
+ * Remove `as`
+ */
+export const splitStyleProps = (props: Store<Record<string, any>>): SplittedProps => {
+  const [splitted, setSplitted] = createStore<SplittedProps>({
+    staticStyles: {},
+    dynamicStyles: {},
+    componentProps: {}
+  });
+  Object.keys(props).forEach(propName => {
+    if (propName === 'as') {
+      return;
     }
-    return filteredProps;
-  }, {} as Partial<FilteredProps<P>>) as any as FilteredProps<P>
+    const styleNames: string[] = [];
+    if (cssProperties.includes(propName)) {
+      styleNames.push(propName);
+    } else {
+      const camelCasePropName = toCamelCase(propName);
+      if (cssProperties.includes(camelCasePropName)) {
+        styleNames.push(camelCasePropName);
+      } else {
+        if (propName in shorthandProps) {
+          const shorthandPropName = propName as string & keyof typeof shorthandProps;
+          if (Array.isArray(shorthandProps[shorthandPropName])) {
+            styleNames.push(...shorthandProps[shorthandPropName]);
+          } else {
+            styleNames.push(shorthandProps[shorthandPropName] as string);
+          }
+        }
+      }
+    }
+    if (styleNames.length === 0) {
+      setSplitted('componentProps', propName, props[propName]);
+      createEffect(() => setSplitted('componentProps', propName, props[propName]));
+    } else if (!isServer && !!Object.getOwnPropertyDescriptor(props, propName)?.get) {
+      styleNames.forEach((name) => setSplitted('staticStyles', name, props[propName]));
+    } else {
+      styleNames.forEach((name) => {
+        setSplitted('dynamicStyles', name, props[propName])
+        createEffect(() => setSplitted('dynamicStyles', name, props[propName]));
+      });
+    }
+  });
 
-export const splitStyles = <P extends RawProps>(
-  props: P
-): AugmentedProps<P> => {
-  const filteredProps = filterShortHands(props);
-  const styleProps =
-    stylePropKeys.filter(key => key in filteredProps);
-  if (styleProps.length > 0) {
-    return splitProps(
-      filteredProps,
-      styleProps as any
-    ) as any;
-  } else {
-    return [{}, props] as any
-  }
-};
+  return splitted;
+}
