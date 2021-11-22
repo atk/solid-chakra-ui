@@ -6,22 +6,33 @@ export type ChakraSize = `${3 | 4 | 5 | 6}xl` | 'xxl' | 'xl' | 'l' | 'm' | 's';
 
 type CSSProps = JSX.CSSProperties;
 
+const toCamelCase = (attr: string) => attr.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+
+const toKebapCase = (attr: string) => attr.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
+
+const addKebapCase = (props: readonly string[] | string[]): string[] => [
+  ...props,
+  ...(props as string[]).reduce<string[]>((cc, name) => {
+    /[A-Z]/.test(name) && cc.push(toKebapCase(name));
+    return cc;
+  }, [])];
+
 const CSSProperties = isServer
-  ? cssProps
-  : Object.getOwnPropertyNames(getComputedStyle(document.body)).filter((name) =>
+  ? addKebapCase(cssProps)
+  : addKebapCase(Object.getOwnPropertyNames(getComputedStyle(document.body)).filter((name) =>
       /\D+/.test(name)
-    );
+    ));
 
 const chakraCSSProps = {
   m: 'margin',
-  mb: 'margin-bottom',
-  ml: 'margin-left',
-  mr: 'margin-right',
-  mt: 'margin-top',
+  mb: 'marginBottom',
+  ml: 'marginLeft',
+  mr: 'marginRight',
+  mt: 'marginTop',
   p: 'padding',
-  pb: 'padding-bottom',
-  pl: 'padding-left',
-  pr: 'padding-right',
+  pb: 'paddingBottom',
+  pl: 'paddingLeft',
+  pr: 'paddingRight',
   pt: 'padding-top',
   w: 'width',
   h: 'height',
