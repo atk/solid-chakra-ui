@@ -1,4 +1,4 @@
-import { createEffect, JSX, Show } from 'solid-js';
+import { createEffect, JSX } from 'solid-js';
 import { createStore, Store } from 'solid-js/store';
 import { isServer } from 'solid-js/web';
 import { cssProps } from './cssProps';
@@ -33,8 +33,8 @@ const shorthandProps = {
 export type CSSProp = keyof CSSStyleDeclaration
 
 export type SplittedProps = {
-  staticStyles: Record<string, string>,
-  dynamicStyles: Record<string, string>,
+  as: string & keyof JSX.IntrinsicElements,
+  styleProps: Record<string, string>,
   componentProps: Record<string, string>
 };
 
@@ -42,10 +42,14 @@ export type SplittedProps = {
  * Reactively split props into static styles, dynamic styles and component props
  * Remove `as`
  */
-export const splitStyleProps = (props: Store<Record<string, any>>): SplittedProps => {
+export const splitStyleProps = (
+  props: Store<Record<string, any>>,
+  asFallback: keyof JSX.IntrinsicElements
+): SplittedProps => {
   const [splitted, setSplitted] = createStore<SplittedProps>({
-    staticStyles: {},
-    dynamicStyles: {},
+    as: props.as || asFallback,
+    styleProps: {},
+    /* dynamicStyles: {}, */
     componentProps: {}
   });
   Object.keys(props).forEach(propName => {
@@ -73,12 +77,10 @@ export const splitStyleProps = (props: Store<Record<string, any>>): SplittedProp
     if (styleNames.length === 0) {
       setSplitted('componentProps', propName, props[propName]);
       createEffect(() => setSplitted('componentProps', propName, props[propName]));
-    } else if (!isServer && !!Object.getOwnPropertyDescriptor(props, propName)?.get) {
-      styleNames.forEach((name) => setSplitted('staticStyles', name, props[propName]));
     } else {
       styleNames.forEach((name) => {
-        setSplitted('dynamicStyles', name, props[propName])
-        createEffect(() => setSplitted('dynamicStyles', name, props[propName]));
+        setSplitted('styleProps', name, props[propName])
+        createEffect(() => setSplitted('styleProps', name, props[propName]));
       });
     }
   });

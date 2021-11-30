@@ -1,24 +1,22 @@
 import { Component, JSX } from 'solid-js';
-import { style } from '@vanilla-extract/css';
-import { splitStyleProps } from './props';
-import { spread } from 'solid-js/web';
+import { styled, Tagged } from 'solid-styled-components';
+import { splitStyleProps, SplittedProps } from './props';
 
-export type BoxProps<E extends keyof JSX.IntrinsicElements = 'div'> =
-  { as?: E } &
-  Partial<JSX.IntrinsicElements[E]> &
-  Record<string & keyof CSSStyleDeclaration, string>;
+export type BoxProps<P extends { as?: JSX.IntrinsicElements } & Record<string, any>> =
+  P extends { as: infer E }
+  ? { as: E } &
+    Partial<JSX.IntrinsicElements[E & keyof JSX.IntrinsicElements]> &
+    Partial<Record<string & keyof CSSStyleDeclaration, string>>
+  : Partial<JSX.IntrinsicElements['div']> &
+    Partial<Record<string & keyof CSSStyleDeclaration, string>>;
 
+export type BoxComponent = <P>(props: P & BoxProps<P>) => JSX.Element;
 
-export const Box: Component<BoxProps> = (props) => {
-  const splittedProps = splitStyleProps(props);
+const tags: Partial<Record<keyof JSX.IntrinsicElements, Tagged<keyof JSX.IntrinsicElements>>> = {};
 
-  const staticStylesClassName = style(splittedProps.staticStyles);
-  const dynamicStylesClassName = style(splittedProps.dynamicStyles);
-
-  const tagName = props.as ?? 'div';
-  const tag = document.createElement(tagName);
-  tag.classList.add(staticStylesClassName);
-  tag.classList.add(dynamicStylesClassName);
-  spread(tag, () => splittedProps.componentProps);
-  return tag;
+export const Box: BoxComponent = (props) => {
+  const splittedProps = splitStyleProps(props, 'div');
+  const tag = tags[splittedProps.as] || (tags[splittedProps.as] = styled(splittedProps.as));
+  const Tag: (props: any) => JSX.Element = tag(splittedProps.styleProps);
+  return <Tag {...splittedProps.componentProps} />;
 };
