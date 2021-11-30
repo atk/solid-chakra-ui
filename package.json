@@ -13,7 +13,7 @@
     "build": "vite build",
     "serve": "vite preview",
     "prettier": "prettier -w **/*.tsx **/*.ts",
-    "test": "uvu -r solid-register"
+    "test": "uvu -r solid-register -r test/setup.ts"
   },
   "license": "MIT",
   "devDependencies": {

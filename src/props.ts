@@ -5,8 +5,6 @@ import { cssProps } from './cssProps';
 
 const toCamelCase = (attr: string) => attr.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
 
-/* const toKebapCase = (attr: string) => attr.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`); */
-
 const cssProperties = isServer
   ? cssProps
   : Object.getOwnPropertyNames(getComputedStyle(document.body)).filter((name) =>
@@ -30,7 +28,9 @@ const shorthandProps = {
   boxSize: ['height', 'width'],
 };
 
-export type CSSProp = keyof CSSStyleDeclaration
+export type CSSProp = keyof (CSSStyleDeclaration & typeof shorthandProps)
+
+export type CSSProps = Record<string & CSSProp, string>;
 
 export type SplittedProps = {
   as: string & keyof JSX.IntrinsicElements,
@@ -57,21 +57,17 @@ export const splitStyleProps = (
       return;
     }
     const styleNames: string[] = [];
+    const camelCasePropName = toCamelCase(propName);
     if (cssProperties.includes(propName)) {
       styleNames.push(propName);
-    } else {
-      const camelCasePropName = toCamelCase(propName);
-      if (cssProperties.includes(camelCasePropName)) {
-        styleNames.push(camelCasePropName);
+    } else if (cssProperties.includes(camelCasePropName)) {
+      styleNames.push(camelCasePropName);
+    } else if (propName in shorthandProps) {
+      const shorthandPropName = propName as string & keyof typeof shorthandProps;
+      if (Array.isArray(shorthandProps[shorthandPropName])) {
+        styleNames.push(...shorthandProps[shorthandPropName]);
       } else {
-        if (propName in shorthandProps) {
-          const shorthandPropName = propName as string & keyof typeof shorthandProps;
-          if (Array.isArray(shorthandProps[shorthandPropName])) {
-            styleNames.push(...shorthandProps[shorthandPropName]);
-          } else {
-            styleNames.push(shorthandProps[shorthandPropName] as string);
-          }
-        }
+        styleNames.push(shorthandProps[shorthandPropName] as string);
       }
     }
     if (styleNames.length === 0) {
