@@ -1,9 +1,9 @@
 import { suite } from 'uvu';
 import * as assert from 'uvu/assert';
 import { render, cleanup } from 'solid-testing-library';
-import { hasStyle } from 'solid-dom-testing'
+import { hasStyle } from 'solid-dom-testing';
 
-import { Box, Square, Circle } from '../src/Box'
+import { Box, Square, Circle } from '../src/Box';
 
 const boxTest = suite('Box');
 
@@ -13,14 +13,14 @@ boxTest('will render a box', () => {
   const { container } = render(() => <Box />);
   const nodes = container.querySelectorAll('*');
   assert.is(nodes.length, 1, 'more than one node rendered');
-  assert.is(nodes[0].nodeName.toLowerCase(), 'div', 'not a div');  
+  assert.is(nodes[0].nodeName.toLowerCase(), 'div', 'not a div');
 });
 
 boxTest('will render a box as="span"', () => {
   const { container } = render(() => <Box as="span" />);
   const nodes = container.querySelectorAll('*');
   assert.is(nodes.length, 1, 'more than one node rendered');
-  assert.is(nodes[0].nodeName.toLowerCase(), 'span', 'not a span');  
+  assert.is(nodes[0].nodeName.toLowerCase(), 'span', 'not a span');
 });
 
 boxTest('will add styles to the box', () => {
@@ -63,7 +63,7 @@ circleTest('has a border radius of 9999px', () => {
   const { container } = render(() => <Circle size="100px" />);
   const node = container.querySelector('div');
   assert.ok(
-    hasStyle(node, { 'borderRadius': '9999px' }),
+    hasStyle(node, { borderRadius: '9999px' }),
     'border radius other than 9999px'
   );
 });

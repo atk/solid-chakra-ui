@@ -4,8 +4,16 @@ import { cssProps } from '../src/cssProps';
 
 const originalGetComputedStyle = window.getComputedStyle;
 
-window.getComputedStyle = globalThis.getComputedStyle = function (elt, pseudoElt = undefined) {
+window.getComputedStyle = globalThis.getComputedStyle = function (
+  elt,
+  pseudoElt = undefined
+) {
   const declaration = originalGetComputedStyle(elt, pseudoElt);
-  cssProps.forEach(prop => Object.defineProperty(declaration, prop, { value: declaration[prop] || '', enumerable: true }));
+  cssProps.forEach((prop) =>
+    Object.defineProperty(declaration, prop, {
+      value: declaration[prop] || '',
+      enumerable: true
+    })
+  );
   return declaration;
 };
